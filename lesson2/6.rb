@@ -20,4 +20,5 @@ end
 cart.each do |product, info|
   puts "Total for #{product}: #{info[:total]}"
 end
+
 puts "Total sum of purchases: #{total_sum}"
