@@ -19,4 +19,4 @@ def calculate_ordinal_date(day, month, year)
   days_before_month + day
 end
 
-result = calculate_ordinal_date(day, month, year)
+calculate_ordinal_date(day, month, year)
