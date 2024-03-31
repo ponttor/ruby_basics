@@ -11,7 +11,7 @@ class Station
   end
 
   def trains_names
-    @trains.map { |train| train.name }
+    @trains.map(&:number)
   end
 
   def trains_by_type(type)
