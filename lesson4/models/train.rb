@@ -1,6 +1,11 @@
 class Train
+  require_relative '../locales/translations'
+
   attr_accessor :speed
-  attr_reader :number, :vagons
+  attr_reader :number, :vagons, :type
+
+  CARGO = :cargo
+  PASSENGER = :passanger
 
   def initialize(number)
     @number = number
@@ -9,18 +14,18 @@ class Train
   end
 
   def stop
-    @speed = 0
+    speed = 0
   end
 
   def attach_vagon(vagon)
-    puts 'Cannot attach this type of vagon to the train' unless can_attach_vagon?(vagon) && @speed == 0
+    puts Translations::VAGON[:errors][:wrong_type] unless can_attach_vagon?(vagon) && speed == 0
 
-    @vagons.push(vagon)
-    puts 'The vagon has been attached'
+    vagons.push(vagon)
+    Translations::VAGON[:success]
   end
 
   def detach_vagon(vagon)
-    @vagons.delete(vagon) if @speed == 0
+    vagons.delete(vagon) if speed == 0
   end
 
   def set_route(route)
@@ -28,6 +33,8 @@ class Train
     @route = route
     @current_station_index = 0
     current_station.accept_train(self)
+    puts format(Translations::ROUTE[:attached], number)  
+
     @current_station = current_station
   end
 
@@ -64,6 +71,6 @@ class Train
   end
 
   def can_attach_vagon?(vagon)
-    false
+    vagon.type == type
   end
 end

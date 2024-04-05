@@ -1,5 +1,6 @@
 class Route
   attr_reader :start_station, :end_station
+  attr_accessor :intermediate_stations
 
   def initialize(start_station, end_station)
     @start_station = start_station
@@ -8,14 +9,14 @@ class Route
   end
 
   def add_station(station)
-    @intermediate_stations << station
+    intermediate_stations << station
   end
 
   def remove_station(station)
-    @intermediate_stations.delete(station)
+    intermediate_stations.delete(station)
   end
 
   def all_stations
-    [@start_station, *@intermediate_stations, @end_station]
+    [start_station, *intermediate_stations, end_station]
   end
 end

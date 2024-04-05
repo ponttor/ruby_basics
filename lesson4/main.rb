@@ -1,11 +1,32 @@
-require_relative 'station'
-require_relative 'route'
-require_relative 'cargo_train'
-require_relative 'cargo_vagon'
-require_relative 'passenger_train'
-require_relative 'passenger_vagon'
+require_relative './models/station'
+require_relative './models/route'
+require_relative './models/trains/cargo_train'
+require_relative './models/vagons/cargo_vagon'
+require_relative './models/trains/passenger_train'
+require_relative './models/vagons/passenger_vagon'
+require_relative './services/stations_service'
+require_relative './services/trains_service'
+require_relative './services/routes_service'
+require_relative './services/vagons_service'
+require_relative './utils/helper'
+require_relative './locales/translations'
 
 class Interface
+  MENU = [
+    {id: 1, title: 'Create a new station', action: :create_station},
+    {id: 2, title: 'Create a new train', action: :create_train},
+    {id: 3, title: 'Create a new route', action: :create_route},
+    {id: 4, title: 'Manage route', action: :manage_route},
+    {id: 5, title: 'Assign route to a train', action: :assign_route},
+    {id: 6, title: 'Add vagon to a train', action: :add_vagon},
+    {id: 7, title: 'Remove vagon from a train', action: :remove_vagon},
+    {id: 8, title: 'Move the train along the route', action: :move_train},
+    {id: 9, title: 'View the list of stations and trains at the station', action: :list_stations_and_trains},
+    {id: 0, title: 'Exit', action: nil},
+  ].freeze
+
+  attr_accessor :stations, :trains, :routes
+
   def initialize
     @stations = []
     @trains = []
@@ -14,186 +35,79 @@ class Interface
 
   def run
     loop do
-      puts 'Выберите действие:'
-      puts '1. Создать станцию'
-      puts '2. Создать поезд'
-      puts '3. Создать маршрут'
-      puts '4. Управление маршрутом'
-      puts '5. Назначить маршрут поезду'
-      puts '6. Добавить вагоны к поезду'
-      puts '7. Отцепить вагоны от поезда'
-      puts '8. Переместить поезд по маршруту'
-      puts '9. Просмотреть список станций и поездов на станции'
-      puts '0. Выход'
-
-      choice = gets.to_i
-
-      case choice
-      when 1 then create_station
-      when 2 then create_train
-      when 3 then create_route
-      when 4 then manage_route
-      when 5 then assign_route
-      when 6 then add_vagon
-      when 7 then remove_vagon
-      when 8 then move_train
-      when 9 then list_stations_and_trains
-      when 0 then break
-      else
-        puts 'Некорректный ввод, попробуйте еще раз.'
-      end
+      show_menu
+      action = take_action(gets.to_i)
+      return if action.nil?
     end
   end
 
   private
 
-  def create_station
-    puts 'Введите название станции:'
-    name = gets.chomp
+  def show_menu
+    MENU.each do |item|
+      puts "#{item[:id]} #{item[:title]}"
+    end
+  end
 
-    @stations << Station.new(name)
-    puts "Станция '#{name}' создана."
+  def take_action(choice)
+    return nil if choice.zero?
+
+    item = MENU.find { |item| item[:id] == choice }
+    return puts Translations::MAIN.errors.invalid_input if item.nil?
+
+    send(item[:action])
+  end
+
+  def create_station
+    stations << StationsService.create_station
   end
 
   def create_train
-    puts 'Введите номер поезда:'
-    number = gets.chomp
-
-    puts 'Выберите тип поезда: 1 - пассажирский, 2 - грузовой'
-    type = gets.to_i
-
-    case type
-    when 1
-      @trains << PassengerTrain.new(number)
-      puts "Пассажирский поезд №#{number} создан."
-    when 2
-      @trains << CargoTrain.new(number)
-      puts "Грузовой поезд №#{number} создан."
-    else
-      puts 'Некорректный тип поезда.'
-    end
+    trains << TrainsService.create_train
   end
 
   def create_route
-    puts 'Введите начальную станцию маршрута:'
-    start_station_name = gets.chomp
-    start_station = find_station_by_name(start_station_name)
-    return puts 'Ошибка ввода' unless start_station
-
-    puts 'Введите конечную станцию маршрута:'
-    end_station_name = gets.chomp
-    end_station = find_station_by_name(end_station_name)
-    return puts 'Ошибка ввода' unless end_station
-    
-    @routes << Route.new(start_station, end_station) 
-    puts "Маршрут от #{start_station.name} до #{end_station.name} создан."
-  end
-
-  def find_station_by_name(name)
-    station = @stations.find { |s| s.name == name }
-    return station if station
-    
-    puts "Станция '#{name}' не найдена."
+    routes << RoutesService.create_route(stations)
   end
 
   def manage_route
-    route = select_route
-    puts '1. Добавить станцию в маршрут'
-    puts '2. Удалить станцию из маршрута'
-    action = gets.to_i
+    route = RoutesService.select_route(routes)
+    action = RoutesService.show_routes_actions
 
-    case action
-    when 1
-      station = prompt_for_station('добавления')
-      route.add_station(station) if station
-    when 2
-      station = prompt_for_station('удаления')
-      route.remove_station(station) if station
-    else
-      puts 'Некорректный ввод.'
-    end
-  end
-
-  def prompt_for_station(action)
-    puts "Введите название станции для #{action}:"
-    station_name = gets.chomp
-    find_station_by_name(station_name).tap do |station|
-      puts "Станция '#{station_name}' не найдена." unless station
-    end
+    RoutesService.apply_action_to_route(route, action, stations)
   end
 
   def assign_route
-    train = select_train
-    route = select_route
+    train = TrainsService.select_train(trains)
+    route = RoutesService.select_route(routes)
+
     train.set_route(route)
-    puts "Маршрут успешно назначен поезду #{train.number}."
   end
 
   def add_vagon
-    train = select_train
-    if train.is_a?(PassengerTrain)
-      train.attach_vagon(PassengerVagon.new)
-    elsif train.is_a?(CargoTrain)
-      train.attach_vagon(CargoVagon.new)
-    end
-    puts "Вагон добавлен к поезду #{train.number}."
+    train = TrainsService.select_train(trains)
+    VagonsService.add_vagon_by_type(train)  
   end
 
   def remove_vagon
-    train = select_train
-    return puts 'У поезда нет вагонов.' if train.vagons.empty?
+    train = TrainsService.select_train(trains)
+    return puts 'The train has no vagons.' if train.vagons.empty?
 
-    vagon = train.vagons.last
-    train.detach_vagon(vagon)
-    puts "Вагон отцеплен от поезда #{train.number}."
+    VagonsService.remove_vagon(train)
   end
 
   def move_train
-    train = select_train
-    puts '1. Переместить поезд на следующую станцию'
-    puts '2. Переместить поезд на предыдущую станцию'
-    action = gets.to_i
-
-    case action
-    when 1
-      train.move_to_next_station
-      puts 'Поезд перемещен на следующую станцию.'
-    when 2
-      train.move_to_previous_station
-      puts 'Поезд перемещен на предыдущую станцию.'
-    else
-      puts 'Некорректный ввод.'
-    end
+    train = TrainsService.select_train(trains)
+    action = TrainsService.select_train_move
+    TrainsService.process_train_move(train, action)
   end
-
+  
   def list_stations_and_trains
-    @stations.each do |station|
-      puts "Станция: #{station.name}"
+    stations.each do |station|
+      puts "Station: #{station.name}"
       station.trains.each do |train|
-        puts "  Поезд №#{train.number}, тип: #{train.class}, количество вагонов: #{train.vagons.size}"
+        puts "  Train №#{train.number}, type: #{train.class}, number of vagons: #{train.vagons.size}"
       end
-    end
-  end
-
-  def select_from_collection(collection, prompt)
-    puts prompt
-    collection.each_with_index do |item, index|
-      item_description = yield(item)
-      puts "#{index + 1}. #{item_description}"
-    end
-    index = gets.to_i - 1
-    collection[index]
-  end
-  
-  def select_route
-    select_from_collection(@routes, 'Выберите маршрут:') do |route|
-      "#{route.start_station.name} – #{route.end_station.name}"
-    end
-  end
-  
-  def select_train
-    select_from_collection(@trains, 'Выберите поезд:') do |train|
-      train.number
     end
   end
 end
