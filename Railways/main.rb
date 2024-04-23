@@ -13,7 +13,6 @@ require_relative './services/vagons_service'
 require_relative './services/print_service'
 require_relative './utils/helper'
 require_relative './locales/translations'
-require_relative './modules/validator'
 
 class Interface
   attr_accessor :stations, :trains, :routes
